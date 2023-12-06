@@ -27,6 +27,13 @@ const init = async () => {
 
   console.log(await titleElement.getText())
 
+  const targetElements = await titleElement.findElement(By.xpath('../../../..')).findElements(By.xpath('./*'))
+
+  for (let i = 0; i < targetElements.length; i += 1) {
+    const text = await targetElements[i].getText()
+    console.log(i, text)
+  }
+
   driver.quit()
 }
 
