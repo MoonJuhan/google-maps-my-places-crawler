@@ -1,0 +1,23 @@
+{
+  "name": "google-maps-my-places-crawler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "MoonJuhan",
+  "email": "codemike@naver.com",
+  "license": "ISC",
+  "prettier": {
+    "singleQuote": true,
+    "semi": false,
+    "trailingComma": "all",
+    "printWidth": 120
+  },
+  "dependencies": {
+    "install": "^0.13.0",
+    "npm": "^10.2.4",
+    "selenium-webdriver": "^4.16.0"
+  }
+}
