@@ -89,6 +89,44 @@ const init = async () => {
   await getMyPlacesElements()
 
   console.log(myplacesElements.length)
+
+  const getMyPlaceDetailInfo = async ({ name, element }, isClicked = false) => {
+    if (!isClicked) element.click()
+
+    await sleep(3000)
+
+    const headingTagElements = await driver.findElements(By.css('h1'))
+
+    if (headingTagElements.length === 0) {
+      await getMyPlaceDetailInfo({ name, element }, true)
+      return
+    }
+
+    const headingTagText = await headingTagElements[0].getText()
+
+    if (headingTagText !== name) {
+      await getMyPlaceDetailInfo({ name, element }, true)
+      return
+    }
+
+    const subTitle = await driver.findElement(By.css('h2')).getText()
+    const category = await driver.findElement(By.css('.fontBodyMedium span button')).getText()
+
+    const imgInButtons = await driver.findElements(By.css('button div > img'))
+
+    for (let index = 0; index < imgInButtons.length; index++) {
+      const button = await imgInButtons[index].findElement(By.xpath('../../../..'))
+      const dataItemId = await button.getAttribute('data-item-id')
+
+      if (dataItemId === 'address') {
+        myplacesElements.find(({ name }) => name === headingTagText).address = await button.getAttribute('aria-label')
+      }
+    }
+
+    myplacesElements.find(({ name }) => name === headingTagText).subTitle = subTitle
+    myplacesElements.find(({ name }) => name === headingTagText).category = category
+  }
+
   driver.quit()
 }
 
