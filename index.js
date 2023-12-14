@@ -1,4 +1,5 @@
 const { By, Builder } = require('selenium-webdriver')
+const fs = require('fs')
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -146,6 +147,9 @@ const init = async () => {
   }
 
   driver.quit()
+
+  const json = JSON.stringify(myplacesElements)
+  await fs.writeFileSync('my-plces.json', json, 'utf8')
 }
 
 init()
