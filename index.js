@@ -49,7 +49,7 @@ const init = async () => {
 
   const myplacesElements = []
 
-  const getMyPlacesElements = async () => {
+  const getMyPlacesNames = async () => {
     let prevChildrenLength = 0
 
     const scrollToLast = async (repeatIndex = 0) => {
@@ -72,8 +72,6 @@ const init = async () => {
 
     await scrollToLast()
 
-    console.log('Scroll To Last')
-
     const children = await scrollElement.findElements(By.xpath('./*'))
 
     for (let i = 0; i < children.length; i += 1) {
@@ -81,31 +79,42 @@ const init = async () => {
         const myPlaceNameElement = await children[i].findElement(By.css('.fontHeadlineSmall'))
         const myPlaceName = await myPlaceNameElement.getText()
 
-        myplacesElements.push({ name: myPlaceName, element: children[i] })
+        myplacesElements.push({ name: myPlaceName })
       } catch (error) {}
     }
   }
 
-  await getMyPlacesElements()
+  await getMyPlacesNames()
 
   console.log(myplacesElements.length)
 
-  const getMyPlaceDetailInfo = async ({ name, element }, isClicked = false) => {
-    if (!isClicked) element.click()
+  const getMyPlaceDetailInfo = async (name, isClicked = false) => {
+    if (!isClicked) {
+      const placeElements = await driver.findElements(By.css('button .fontHeadlineSmall'))
 
-    await sleep(3000)
+      for (let i = 0; i < placeElements.length; i += 1) {
+        const placeElementText = await placeElements[i].getText()
+
+        if (placeElementText === name) {
+          await placeElements[i].click()
+          break
+        }
+      }
+    }
+
+    await sleep(4000)
 
     const headingTagElements = await driver.findElements(By.css('h1'))
 
     if (headingTagElements.length === 0) {
-      await getMyPlaceDetailInfo({ name, element }, true)
+      await getMyPlaceDetailInfo(name, true)
       return
     }
 
     const headingTagText = await headingTagElements[0].getText()
 
     if (headingTagText !== name) {
-      await getMyPlaceDetailInfo({ name, element }, true)
+      await getMyPlaceDetailInfo(name, true)
       return
     }
 
@@ -125,6 +134,15 @@ const init = async () => {
 
     myplacesElements.find(({ name }) => name === headingTagText).subTitle = subTitle
     myplacesElements.find(({ name }) => name === headingTagText).category = category
+
+    const backButtons = await driver.findElements(By.css('#omnibox-singlebox button'))
+    await backButtons[0].click()
+  }
+
+  for (let index = 0; index < myplacesElements.length; index += 1) {
+    await getMyPlaceDetailInfo(myplacesElements[index].name)
+    console.log(myplacesElements[index])
+    await sleep(1000)
   }
 
   driver.quit()
