@@ -149,7 +149,7 @@ const init = async () => {
   driver.quit()
 
   const json = JSON.stringify(myplacesElements)
-  await fs.writeFileSync('my-plces.json', json, 'utf8')
+  await fs.writeFileSync('my-places.json', json, 'utf8')
 }
 
 init()
