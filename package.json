@@ -16,6 +16,7 @@
     "printWidth": 120
   },
   "dependencies": {
+    "fs": "^0.0.1-security",
     "install": "^0.13.0",
     "npm": "^10.2.4",
     "selenium-webdriver": "^4.16.0"
