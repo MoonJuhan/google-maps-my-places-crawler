@@ -148,8 +148,12 @@ const init = async () => {
 
   driver.quit()
 
-  const json = JSON.stringify(myplacesElements)
-  await fs.writeFileSync('my-places.json', json, 'utf8')
+  const csv = [['name', 'address', 'subTitle', 'category']]
+  myplacesElements.forEach(({ name, address, subTitle, category }) => {
+    csv.push([name, address, subTitle, category].map((str) => `"${str}"`))
+  })
+
+  await fs.writeFileSync('my-places.csv', csv.map((arr) => arr.join(',')).join('\n'), 'utf8')
 }
 
 init()
