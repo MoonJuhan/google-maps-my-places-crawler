@@ -1,36 +1,29 @@
 const { By, Builder } = require('selenium-webdriver')
 const fs = require('fs')
 
+const driver = new Builder().forBrowser('chrome').build()
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const init = async () => {
-  const driver = await new Builder().forBrowser('chrome').build()
-  await driver.get('URL')
-
-  const getTitleElement = async (index = 0) => {
-    if (index > 10) {
-      console.log('ERROR: No title element found')
-      driver.quit()
-      return
-    }
-
-    const elements = await driver.findElements(By.css('h1'))
-
-    if (elements.length === 0) {
-      await sleep(1000)
-      return getTitleElement(index + 1)
-    }
-
-    return elements[0]
+const getTitleElement = async (index = 0) => {
+  if (index > 10) {
+    console.log('ERROR: No title element found')
+    driver.quit()
+    return
   }
 
-  const titleElement = await getTitleElement()
-  const titleText = await titleElement.getText()
+  const elements = await driver.findElements(By.css('h1'))
 
-  console.log(`Title: ${titleText}`)
+  if (elements.length === 0) {
+    await sleep(1000)
+    return getTitleElement(index + 1)
+  }
 
+  return elements[0]
+}
+
+const getScrollElement = async (titleElement) => {
   const targetElements = await titleElement.findElement(By.xpath('../../../..')).findElements(By.xpath('./*'))
-
   let scrollElement
 
   for (let i = 0; i < targetElements.length; i += 1) {
@@ -48,77 +41,81 @@ const init = async () => {
     }
   }
 
-  const myplacesElements = []
+  return scrollElement
+}
 
-  const getMyPlacesNames = async () => {
-    let prevChildrenLength = 0
+const myplacesElements = []
 
-    const scrollToLast = async (repeatIndex = 0) => {
-      if (repeatIndex > 3) return
+const getMyPlacesNames = async (scrollElement) => {
+  let prevChildrenLength = 0
 
-      driver.actions().scroll(0, 0, 0, 9999, scrollElement).perform()
-      await sleep(1000)
+  const scrollToLast = async (repeatIndex = 0) => {
+    if (repeatIndex > 3) return
 
-      const children = await scrollElement.findElements(By.xpath('./*'))
-
-      if (prevChildrenLength !== children.length) {
-        prevChildrenLength = children.length
-        await scrollToLast()
-        return
-      }
-
-      prevChildrenLength = children.length
-      await scrollToLast(repeatIndex + 1)
-    }
-
-    await scrollToLast()
+    driver.actions().scroll(0, 0, 0, 9999, scrollElement).perform()
+    await sleep(1000)
 
     const children = await scrollElement.findElements(By.xpath('./*'))
 
-    for (let i = 0; i < children.length; i += 1) {
-      try {
-        const myPlaceNameElement = await children[i].findElement(By.css('.fontHeadlineSmall'))
-        const myPlaceName = await myPlaceNameElement.getText()
+    if (prevChildrenLength !== children.length) {
+      prevChildrenLength = children.length
+      await scrollToLast()
+      return
+    }
 
-        myplacesElements.push({ name: myPlaceName })
-      } catch (error) {}
+    prevChildrenLength = children.length
+    await scrollToLast(repeatIndex + 1)
+  }
+
+  await scrollToLast()
+
+  const children = await scrollElement.findElements(By.xpath('./*'))
+
+  for (let i = 0; i < children.length; i += 1) {
+    try {
+      const myPlaceNameElement = await children[i].findElement(By.css('.fontHeadlineSmall'))
+      const myPlaceName = await myPlaceNameElement.getText()
+
+      myplacesElements.push({ name: myPlaceName })
+    } catch (error) {}
+  }
+}
+
+const getMyPlaceDetailInfo = async (name, isClicked = false) => {
+  if (!isClicked) {
+    const placeElements = await driver.findElements(By.css('button .fontHeadlineSmall'))
+
+    for (let i = 0; i < placeElements.length; i += 1) {
+      const placeElementText = await placeElements[i].getText()
+
+      if (placeElementText === name) {
+        await placeElements[i].click()
+        break
+      }
     }
   }
 
-  await getMyPlacesNames()
+  const headingTagElements = await driver.findElements(By.css('h1'))
 
-  console.log(myplacesElements.length)
+  if (headingTagElements.length === 0) {
+    await sleep(1000)
+    await getMyPlaceDetailInfo(name, true)
+    return
+  }
 
-  const getMyPlaceDetailInfo = async (name, isClicked = false) => {
-    if (!isClicked) {
-      const placeElements = await driver.findElements(By.css('button .fontHeadlineSmall'))
+  const headingTagText = await headingTagElements[0].getText()
 
-      for (let i = 0; i < placeElements.length; i += 1) {
-        const placeElementText = await placeElements[i].getText()
+  if (!headingTagText.includes(name)) {
+    await sleep(1000)
+    await getMyPlaceDetailInfo(name, true)
+    return
+  }
 
-        if (placeElementText === name) {
-          await placeElements[i].click()
-          break
-        }
-      }
-    }
+  if (!myplacesElements.find(({ name }) => name === headingTagText)) {
+    myplacesElements.push({ name: headingTagText })
+  }
 
-    await sleep(4000)
-
-    const headingTagElements = await driver.findElements(By.css('h1'))
-
-    if (headingTagElements.length === 0) {
-      await getMyPlaceDetailInfo(name, true)
-      return
-    }
-
-    const headingTagText = await headingTagElements[0].getText()
-
-    if (headingTagText !== name) {
-      await getMyPlaceDetailInfo(name, true)
-      return
-    }
-
+  try {
     const subTitle = await driver.findElement(By.css('h2')).getText()
     const category = await driver.findElement(By.css('.fontBodyMedium span button')).getText()
 
@@ -135,25 +132,56 @@ const init = async () => {
 
     myplacesElements.find(({ name }) => name === headingTagText).subTitle = subTitle
     myplacesElements.find(({ name }) => name === headingTagText).category = category
+  } catch (error) {
+    console.log('flag 1')
+    return Promise.reject(error)
+  }
 
+  try {
+    await sleep(1000)
     const backButtons = await driver.findElements(By.css('#omnibox-singlebox button'))
     await backButtons[0].click()
+  } catch (error) {
+    console.log('flag 2')
+    return Promise.reject(error)
   }
+}
 
-  for (let index = 0; index < myplacesElements.length; index += 1) {
-    await getMyPlaceDetailInfo(myplacesElements[index].name)
-    console.log(myplacesElements[index])
-    await sleep(1000)
-  }
-
-  driver.quit()
-
+const writeCSVFile = async () => {
   const csv = [['name', 'address', 'subTitle', 'category']]
   myplacesElements.forEach(({ name, address, subTitle, category }) => {
     csv.push([name, address, subTitle, category].map((str) => `"${str}"`))
   })
 
   await fs.writeFileSync('my-places.csv', csv.map((arr) => arr.join(',')).join('\n'), 'utf8')
+}
+
+const init = async () => {
+  console.time('processing time')
+
+  await driver.get('https://maps.app.goo.gl/3PB6L9VPvF8npsy46')
+
+  const titleElement = await getTitleElement()
+  const scrollElement = await getScrollElement(titleElement)
+
+  await getMyPlacesNames(scrollElement)
+
+  for (let index = 0; index < myplacesElements.length; index += 1) {
+    console.log(myplacesElements[index].name)
+
+    try {
+      await getMyPlaceDetailInfo(myplacesElements[index].name)
+    } catch (error) {
+      console.log(error)
+    }
+
+    await writeCSVFile()
+    await sleep(1000)
+  }
+
+  driver.quit()
+
+  // writeCSVFile()
 }
 
 init()
